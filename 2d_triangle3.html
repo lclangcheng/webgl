@@ -1,0 +1,171 @@
+<!DOCTYPE HTML>
+<html lang = 'en'>
+<head>
+<title>
+A First WebGL Example
+</title>
+<meta charset = "utf-8">
+<script id = "shader-vs" type="x-shader/x-vertex">
+	attribute vec3 aVertexPosition;
+	attribute vec4 aVertexColor;
+	varying vec4 vColor;
+	void main() {
+		vColor = aVertexColor;
+		gl_Position = vec4(aVertexPosition, 1.0);
+	}
+</script>
+<script id = "shader-fs" type="x-shader/x-fragment">
+	precision mediump float;
+
+	varying vec4 vColor;
+	void main() {
+		gl_FragColor = vColor;
+	}
+</script>	
+<script src = "lib/webgl-debug.js"> </script>
+<script type = "text/javascript">
+	let gl, canvas, shaderProgram, vertexBuffer;
+
+	let createGLContext = (canvas) => {
+		let names = ["webgl", "experimental-webgl"];
+		let context = null;
+		for (let i = 0; i < names.length; i++) {
+			try{
+				context = canvas.getContext(names[i]);
+			} catch(e) {
+
+			}
+			if (context) { 
+				break;
+			}
+		}
+		if (context) {
+			context.viewportWidth = canvas.width;
+			context.viewportHeight = canvas.height;
+		} else {
+			alert("Failed to createWebGL context!");
+		}
+		return context;
+	};
+
+	let loadShaderFromDOM = (id) => {
+		let shaderScript = document.getElementById(id);
+
+		if (!shaderScript) return null;
+
+		let shaderSource = "";
+		let currentChild = shaderScript.firstChild;
+		while(currentChild) {
+			if (currentChild.nodeType == 3) {
+				shaderSource += currentChild.textContent;
+			}
+			currentChild = currentChild.nextSibling;
+		}
+
+		let shader;
+		if (shaderScript.type == "x-shader/x-fragment") {
+			shader = gl.createShader(gl.FRAGMENT_SHADER);
+		} else if (shaderScript.type == "x-shader/x-vertex") {
+			shader = gl.createShader(gl.VERTEX_SHADER);
+		} else {
+			return null;
+		}
+
+		gl.shaderSource(shader, shaderSource);
+		gl.compileShader(shader);
+
+		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+			alert(gl.getShaderInfoLog(shader));
+			return null;
+		}
+		return shader;
+	};
+	
+	let setupShaders = () => {
+		let vertexShader = loadShaderFromDOM("shader-vs");
+		let fragmentShader = loadShaderFromDOM("shader-fs");
+
+		shaderProgram = gl.createProgram();
+		gl.attachShader(shaderProgram, vertexShader);
+		gl.attachShader(shaderProgram, fragmentShader);
+		gl.linkProgram(shaderProgram);
+
+		if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+			alert("Failed to setup shaders");
+		}
+
+		gl.useProgram(shaderProgram);
+
+		shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+		shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+		gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+  		gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+
+	};
+
+	let setupBuffers = () => {
+		vertexBuffer = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+		let triangleVertices = [
+			 0.0,  0.5, 0.0,	255,	0,		0,		255,
+			-0.5, -0.5, 0.0,	0,		250,	6,		255,
+			 0.5, -0.5, 0.0,	0,		0,		255,	255
+		];
+
+		let nbrOfVertices = 3;
+		let vertexSizeInBytes = 3 * Float32Array.BYTES_PER_ELEMENT + 4 * Uint8Array.BYTES_PER_ELEMENT;
+		let vertexSizeInFloats = vertexSizeInBytes / Float32Array.BYTES_PER_ELEMENT;
+		let buffer = new ArrayBuffer(nbrOfVertices * vertexSizeInBytes);
+		let positionView = new Float32Array(buffer);
+		let colorView = new Uint8Array(buffer);
+
+		let positionOffsetInFloats = 0;
+		let colorOffsetInBytes = 12;
+		let k = 0;
+		for (let i = 0; i < nbrOfVertices; i++){
+			positionView[positionOffsetInFloats] = triangleVertices[k];
+			positionView[positionOffsetInFloats+1] = triangleVertices[k+1];
+			positionView[positionOffsetInFloats+2] = triangleVertices[k+2];
+			colorView[colorOffsetInBytes] = triangleVertices[k+3];
+			colorView[colorOffsetInBytes+1] = triangleVertices[k+4];
+			colorView[colorOffsetInBytes+2] = triangleVertices[k+5];
+			colorView[colorOffsetInBytes+3] = triangleVertices[k+6];
+
+			positionOffsetInFloats += vertexSizeInFloats;
+			colorOffsetInBytes += vertexSizeInBytes;
+			k +=7;
+		}
+
+		gl.bufferData(gl.ARRAY_BUFFER, buffer, gl.STATIC_DRAW);
+		vertexBuffer.positionSize = 3;
+		vertexBuffer.colorSize = 4;
+		vertexBuffer.numberOfItems = 3;
+	};
+
+
+	let draw = () => {
+		gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+		gl.clear(gl.COLOR_BUFFER_BIT);
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+		gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, vertexBuffer.positionSize, gl.FLOAT, false, 16, 0);
+		gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, vertexBuffer.colorSize, gl.UNSIGNED_BYTE, true, 16, 12);
+
+		gl.drawArrays(gl.TRIANGLES, 0, vertexBuffer.numberOfItems);
+	};
+	
+	let startup = () => {
+		canvas = document.getElementById("myGLCanvas");	
+		gl = WebGLDebugUtils.makeDebugContext(createGLContext(canvas));
+		setupShaders();
+		setupBuffers();
+		gl.clearColor(1.0, 1.0, 1.0, 1.0);
+		draw();
+	};
+
+</script>
+</head>
+<body onload="startup();">
+	<canvas id = "myGLCanvas" width="500" height = "500"></canvas>
+</body>
+</html>
