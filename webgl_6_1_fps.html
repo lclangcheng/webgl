@@ -423,7 +423,7 @@
 			pwgl.previousFrameTimeStamp = currentTime;
 		}
 
-
+		//设置视口大小
 		gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 		//投影矩阵， 视域体垂直60度，纵横比宽/高， 近平面0.1单位位置，远平面100单位位置
@@ -513,7 +513,7 @@
 <body onload="startup();">
  <canvas id="myGLCanvas" width="500", height="500"></canvas>
  <div id = "fps-counter">
- 	FPS:<span id = "fps"></span>
+ 	FPS:<span id = "fps">--</span>
  </div>
 </body>
 </html>
